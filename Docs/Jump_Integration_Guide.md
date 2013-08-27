@@ -1,20 +1,17 @@
-# JUMP for Android Integration Guide
+# JUMP for Android
 
-This guide describes integrating the Janrain User Management Platform into your Android app. This includes
-the Capture user registration system. For Engage-only (i.e. social-authentication-only) integrations see
-`Engage_Only_Integration_Guide.md`
+This guide describes integrating the Janrain User Management Platform into your Android app. This includes the User Registration (Capture) solution. For Social Sign-in only (Engage only) integrations see the Android Social Sign-In Only Integration page.
 
-**Warning** You must have a flow configured with your Capture instance in order to use the Capture library.
+**Warning** You must have a flow file configured with your User Registration solution instance in order to use the User Registration library.
 
 ## Features
 
-* Engage social sign-in (includes OpenID, and many OAuth identity providers, e.g. Google, Facebook, etc.)
-* Sign-in to Capture accounts
-    * Either via Engage social sign-in or via traditional username/password sign-in
-    * Including the Capture "merge account flow" (which links two social accounts by verified email address
-      at sign-in time)
-* Capture account record updates
-* Capture Account "thin" social registration -- automatic account creation for social sign-in users.
+* Social Sign-In (Engage), which includes OpenID, and many OAuth identity providers, such as, Google, Facebook, LinkedIn, and more.
+* Sign-in to User Registration (Capture) accounts.
+    * Either through Social Sign-In or traditional username and password sign-in.
+    * Including the User Registration “merge account flow” (which links two social accounts by verified email address at sign-in time).
+* User Registration account record updates.
+* User Registration Account “thin” social registration — automatic account creation for social sign-in users.
 
 ### In the Pipeline
 
@@ -23,66 +20,75 @@ the Capture user registration system. For Engage-only (i.e. social-authenticatio
 * Social account linking (like the "merge account" sign-in flow, but after a user is signed in.)
 * Session refreshing (sessions currently last one hour)
 
-## 10,000' View
+## The Big Picture
 
-Basic use flow:
+These are the basic steps that you will follow. Each is described in detail, below.
 
-1. Gather your configuration details
-2. Declare the library project dependency, and add the required elements to your `AndroidManifest.xml` file.
-3. Initialize the library
-4. Start a sign-in
-5. Modify the profile
-6. Send record updates
-7. Persist the local user object
+    Gather your configuration details.
+    Declare the library project dependency, and add the required elements to your `AndroidManifest.xml` file.
+    Initialize the library.
+    Start a sign-in.
+    Modify the profile.
+    Persist the local user object.
+    Sign the User Out.
+
+At the end of this guide, you will find a link to the Android User Registration guide, a section on customizing the appearance of your app, and a troubleshooting section.
 
 ## Gather your Configuration Details
 
 Before you begin integrating you will need an array of configuration details:
 
-1. Sign in to your Engage Dashboard - https://rpxnow.com
-    1. Configure the social providers you wish to use for authentication ("Deployment" drop down menu ->
-       "Engage for Android").
-    2. Retrieve your 20-character Engage application ID from the Engage Dashboard (In the right column of
-       the "Home" page on the Engage dashboard.)
-2. Ask your deployment engineer or account manager for your Capture domain.
-3. Create a new Capture API client for your mobile app:
-    1. Sign in to the Capture dashboard and provision a new API client for your mobile app
 
-       **Warning** `login_client` is mutually exclusive with all other API client features, which means only
-       login clients can be used to sign users in, and only non-login-clients can perform client_id and
-       client_secret authenticated Capture API calls. This means that you cannot use the owner client as a
-       login client.
-       **Warning** If you do not set the write_with_token access schema for your API client to include the
-       attributes your client will write to in the its write access schema you will receive
-       `missing attribute` errors when attempting to update attributes.
-4. Discover your flow settings:
-    Ask your deployment engineer for:
-        * The name of the Capture "flow" you should use
-        * The name of the flow's traditional sign-in form
-        * The name of the "locale" in the flow your app will use
-          The value for US English is "en-US".
-        * The appropriate values for the settings `default_flow_name` and `default_flow_version`.
-          (Set these settings for your new API client in the "Settings" section of the Janrain Capture
-          dashboard (https://janraincapture.com) )
-5. Determine whether your app should use "Thin" social registration, or "two-step" social registration.
-6. Determine the name of the traditional sign-in key-attribute (e.g. `email` or `username`)
+1.    Sign in to the Janrain Dashboard – `https://dashboard.janrain.com`
+2.    Click the Engage icon (Looks like talk balloons).
+3.    You get a new page. In the lower left panel, under Widgets and SKDs, click Android.
+4.    On the new page, near the top, click Sign-In Providers. Then go to the relevant provider guide in the Provider Setup Guide and follow the instructions.
+5.    Retrieve your 20-character Engage application ID from the Dashboard. (From the Provider page of the dashboard, click the name of your application in the bread crumbs at the top of the page. Go to the Settings panel, and click the pencil icon. Your ID and secrets are on the right.)
+6.    Ask your Janrain Deployment Engineer (now called Technical Lead) or account manager for your User Registration (Capture) domain.
 
-**Warning** You _must_ create a new API client with the correct `login_client` feature for operation of the
-JUMP native mobile SDKs.
+
+### Create a New User Registration API Client for Your Mobile App
+
+1.    In the Janrain Dashboard, provision a new API client for your mobile app.
+2.    Give this new API Client the login_client permission.
+
+**Warning**: The `login_client` is mutually exclusive with all other API client features, which means only login clients can be used to sign users in, and only non-login-clients can perform `client_id` and `client_secret` authenticated Capture API calls. This means that you cannot use the owner client as a login client. See API Clients and Permissions for more details.
+
+3. Set the `write_with_token` access schema for your API client to include the attributes you want this client to write to its write access schema. If you do not do this, you will receive missing attribute errors when you attempt to update attributes.
 
 ## Declare and Import
 
 ### Declare the Android Library Project Dependency
 
-Using the Android command line tool, from the directory of your project's AndroidManifest.xml:
+Using the Android command line tool, from the directory of your project's `AndroidManifest.xml`:
 
     android update project -p . -l ../path/to/jump.android/Jump
 
-### Declare the JUMP Activities
+### Discover Your Flow Settings
 
-Ensure the presence of the `android.permission.INTERNET` permission in your `<uses-permission>` element, and
-copy from `.../Jump/AndroidManifest.xml`, adding the following two `<activity>` XML elements, and to your
-project's `AndroidManifest.xml` file:
+Ask your Technical Lead (formerly, Deployment Engineer) for:
+
+1.    The name of the Capture "flow" you should use.
+2.    The name of the flow's traditional sign-in form.
+3.    The name of the locale in the flow your app will use.
+4.    The value for US English is `en-US`. For other values, ask your Technical Lead.
+5.    The appropriate values for the settings for `default_flow_name` and `default_flow_version`. (Set these settings for your new API client in the "Settings" section of the Janrain Dashboard (https://dashboard.janrain.com).
+6.    Determine whether your app should use "Thin" social registration, or "two-step" social registration.
+7.    Determine the name of the traditional sign-in key-attribute (for example, `email` or `username`).
+
+**Warning**: You must create a new API client with the correct `login_client` feature for operation of the JUMP native mobile SDKs.
+
+### Declare Dependancies and Activities
+
+You need to declare the Android Library Project Dependency.
+
+Using the Android command line tool, from the directory of your project's `AndroidManifest.xml`:
+
+`android update project -p . -l ../path/to/jump.android/Jump`
+
+Now, declare the JUMP Activities.
+
+Ensure the presence of the `android.permission.INTERNET` permission in your element, and copy from `.../Jump/AndroidManifest.xml`, adding the following two XML elements, and add it to your project's `AndroidManifest.xml` file:
 
     <manifest xmlns:android="http://schemas.android.com/apk/res/android" ... >
 
@@ -128,14 +134,9 @@ project's `AndroidManifest.xml` file:
 
     </manifest>
 
-**Note**: If you wish to target a version of Android lower than 13 (which is 3.2) you may. To do so, change
-the `android:targetSdkVersion`, to your desired deployment target. _You must still build against API 13+
-even when targeting a lower API level._ The build SDK used when compiling your project is defined by your
-project's local.properties. `android list target` to get a list of targets available in your installation of
-the Android SDK. `android update project -p . -t target_name_or_target_installation_id` to update the build
-SDK for your project. (Note that this does *not* affect your project's `minSdkVersion` or `targetSdkVersion`.
+**Note**: If you wish to target a version of Android lower than 13 (which is 3.2) you may. To do so, change the `android:targetSdkVersion` to your desired deployment target. You must still build against API 13+ even when targeting a lower API level. The build SDK you use when compiling your project is defined by your project’s `local.properties`. Use android list target to get a list of targets available in your installation of the Android SDK. Use `android update project -p . -t target_name_or_target_installation_id` to update the build SDK for your project. (This does not affect your project’s `minSdkVersion` or `targetSdkVersion`.
 
-### Import the Library
+## Import the Library
 
 Import the following classes:
 
@@ -143,7 +144,7 @@ Import the following classes:
     import com.janrain.android.capture.Capture;
     import com.janrain.android.capture.CaptureApiError;
 
-## Initialize
+## Initialize the Library
 
 Initialize the library by calling `Jump#init` method. For example:
 
@@ -181,45 +182,40 @@ the SimpleDemo project does this:
 
 ### Traditional Sign-In and Social Sign-In
 
-The Capture part of the SDK supports both social sign-in via Engage (e.g. Facebook) as well as traditional
-sign-in (i.e. username and password or email and password sign-in.) There are three main ways to start
-sign-in:
+The User Registration part of the SDK supports both Social Sign-in through Engage as well as traditional sign-in (that is, username and password or email and password sign-in). There are three main ways to start sign-in:
 
 - `Jump.showSignInDialog(Activity, String, SignInResultHandler, String)`: Starts the Engage social sign-in
   process. If the provider argument (the second parameter) is null it sign-in begins by displaying a list of
   all currently configured social sign-in providers, and guiding the user through the authentication.
 - `Jump.showSignInDialog(Activity, String, SignInResultHandler, String)`: If called with a non-null string
-  for the second argument it proceeds directly to the provider. So, e.g. "facebook" will start a sign-in
+  for the second argument it proceeds directly to the provider. So, for example "facebook" will start a sign-in
   directly with Facebook.
 - `Jump.performTraditionalSignIn(String, String, SignInResultHandler, String)`: Starts the traditional
   sign-in flow headlessly (with no user-experience).
 
-The fourth String parameter is the merge token paremeter. It is used in the second step of the "Merge Account
-Flow", described below.
+The fourth `String` parameter is the merge token paremeter. You will use it in the second step of the "Merge Account Flow," described below.
 
 ### Handling the Merge Account Sign-In Flow
 
-Sometimes a user will have created a record with one means of sign-in (e.g. a traditional username and
-password record) and will later attempt to sign-in with a different means (e.g. with Facebook.)
+Sometimes a user will have created a record with one means of sign-in (for example, a traditional username and password record) and will later attempt to sign-in with a different means (such as, with Facebook or some other identity provider).
 
-When this happens the sign-in cannot succeed, because there is no Capture record associated with the social
-sign-in identity, and the email address from the identity is already in use.
+When this happens the sign-in cannot succeed, because there is no User Registration record associated with the social sign-in identity, and the email address from the identity is already in use.
 
 Before being able to sign-in with the social identity, the user must merge the identity into their existing
 record. This is called the "Merge Account Flow."
 
 The merge is achieved at the conclusion of a second sign-in flow authenticated by the record's existing
 associated identity. The second sign-in is initiated upon the failure of the first sign-in flow, and also
-includes a merge token which Capture uses to merge the identity from the first (failed) sign-in into the
+includes a merge token which User Registration uses to merge the identity from the first (failed) sign-in into the
 record.
 
-Capture SDK event sequence for Merge Account Flow:
+#### User Registration SDK Event Sequence for Merge Account Flow
 
- 1. User attempts to sign-in with a social identity, "identity F".
- 2. Capture sign-in fails because there is an existing Capture record connected to "identity G", which shares
-    some constrained attributes with "identity F". E.g. the two identities have the same email address.
- 3. The SignInResultHandler has its failure callback invoked, with an error representing this state. This
-    case is to be discerned via the isMergeFlowError() method of the contained captureApiError. E.g. like
+ 1. User attempts to sign-in with a social identity, "identity F."
+ 2. The User Registration sign-in fails because there is an existing User Registration record connected to "identity G," which shares
+    some constrained attributes with "identity F." For example, the two identities have the same email address.
+ 3. The `SignInResultHandler` has its failure callback invoked, with an error representing this state. This
+    case is to be discerned through the `isMergeFlowError()` method of the contained `captureApiError`, like
     `error.reason == SignInError.FailureReason.CAPTURE_API_ERROR &&
     error.captureApiError.isMergeFlowError())`.
  4. The host application (your mobile app) notifies the user of the conflict and advises the user to merge the
@@ -227,7 +223,7 @@ Capture SDK event sequence for Merge Account Flow:
  5. The user elects to take action
  6. The merge sign-in is started by invoking `com.janrain.android.Jump#showSignInDialog` with a merge token,
     or by invoking `com.janrain.android.capture.Capture.performTraditionalSignIn` with a merge token.
-    The existing identity provider of the record is retrieved with
+    Retrieve the existing identity provider of the record with
     `error.captureApiError.getExistingAccountIdentityProvider()`, and the merge token with
     `error.captureApiError.getMergeToken()`.
 
@@ -273,7 +269,7 @@ Example:
 
 This example checks for the merge-flow error, it prompts the user to merge, and it start authentication.
 
-**Note** That the "existing provider" of the merge flow can be "capture" which represents Capture itself.
+**Note** That the "existing provider" of the merge flow can be "capture" which represents User Registration (that is, Capture) itself.
 This case occurs when the merge-failure was a conflict with an existing record created with traditional
 sign-in. This case is handled can be handled separately if you wish to create the traditional-sign in UI, or
 you can call
@@ -281,25 +277,27 @@ you can call
 
 ### Baseline Merge User-Interface
 
-In order to lower the JUMP SDK integration overhead the SDK provides a baseline user experience for the
+In order to lower the JUMP SDK integration overhead the SDK provides a baseline user experience (UX) for the
 merge account flow. You can use the baseline UX to get started exploring the feature. Later on, you can get
-more control over the UX by implementing your own UX, and using the headless APIs provided to interact with
-Capture.
+more control over the UX by implementing your own UX, and using the headless API calls provided to interact with
+our User Registration solution.
 
-To invoke the baseline UX call
+To invoke the baseline UX call:
 `Jump.startDefaultMergeFlowUi(yourActivity, theOriginalSignInError, yourSignInResultHandler)`
 
 ## Read and Modify the Account Record
 
-### Capture Schema Basics
+First, you need to know about the User Registration Schema, then you need to learn about Retrieving and User the User Registration Record Model.
 
-Capture user records are defined by the Capture schema, which defines the attributes of the record. An attribute is
+### User Registration Schema Basics
+
+User Registration (Capture) user records are defined by the User Registration schema, which defines the attributes of the record. An attribute is
 either a primitive value (a number, a string, a date, or similar) an object, or a plural.
 
 Primitive attribute values are the actual data that make up your user record. For example, they are your user's
 identifier, or their email address, or birthday.
 
-Objects and plurals make up the structure of your user record. For example, in the default Capture schema, the user's
+Objects and plurals make up the structure of your user record. For example, in the default User Registration schema, the user's
 name is represented by an object with six primitive values (strings) used to contain the different parts of the name.
 (The six values are `familyName`, `formatted`, `givenName`, `honorificPrefix`, `honorificSuffix`, `middleName`.)
 Objects can contain primitive values, sub-objects, or plurals, and those attributes are defined in the schema.
@@ -308,26 +306,26 @@ Plurals contain collections of objects. Each element in a plural is an object or
 plural has the same set of attributes, which are defined in the schema. Think of a plural as an object that may have
 zero-or-more instances.
 
-### Retrieving and Using the Capture Record Model
+### Retrieving and Using the User Registration Record Model
 
-You can retrieve the signed-in Capture user's account record via `Jump.getSignedInUser()`. The record is
+You can retrieve the signed-in User Registration user's account record using `Jump.getSignedInUser()`. The record is
 an instance of `org.json.JSONObject`, with some additional methods defined by a subclass. You can read
-and write to the record via the usual `JSONObject` methods.
+and write to the record with the usual `JSONObject` methods.
 
-For example, to read the aboutMe attribute in the record:
+For example, to read the `aboutMe` attribute in the record:
 
     Jump.getSignedInUser().optString("aboutMe")
 
-Any changes made to the record must still obey the entity type schema from Capture. So, e.g. you cannot add
+Any changes made to the record must still obey the entity type schema from User Registration. For example, you cannot add
 dynamic new attributes, but you can add additional elements to plurals in the schema.
 
-For example, to write the aboutMe attribute in the record:
+For example, to write the `aboutMe` attribute in the record:
 
     Jump.getSignedInUser().put("aboutMe", "It is good to be well-liked.");
 
-To push local changes to the Capture server call `com.janrain.android.capture.CaptureRecord#synchronize`.
+To push local changes to the User Registration server call `com.janrain.android.capture.CaptureRecord#synchronize`.
 
-## Call the Load and Store Hooks
+## Persist the User Records
 
 Because Android can garbage collect processes at its discretion every app must persist its state when it may
 leave the foreground, and restore the persisted state when it restarts.
@@ -347,7 +345,7 @@ For example, from the SimpleDemo Application object:
 
 Whenever your Android application pauses you must call `com.janrain.android.Jump.saveToDisk`.
 
-For example, from MainActivity in SimpleDemo:
+For example, from `MainActivity` in SimpleDemo:
 
     @Override
     protected void onPause() {
@@ -357,20 +355,22 @@ For example, from MainActivity in SimpleDemo:
 
 ## Sign the User Out
 
-Call `com.janrain.android.Jump.signOutCaptureUser` to sign the user out.
+To sign the user out, call `com.janrain.android.Jump.signOutCaptureUser` .
 
-## Next: Registration
+## User Registration
 
 Once you have sign-in and record updates working, see the `User_Registration_Guide.md` for a guide to new user
 registration.
 
 ## Appearance Customization
 
+You can modify the appearance of your app, if you wish.
+
 ### Creating Your Own User Interface
 
 You can create your own traditional sign-in user interface and use
-`com.janrain.android.Jump.performTraditionalSignIn` to sign users in.
-`com.janrain.android.Jump.showSignInDialog` also takes a provider name parameter which, if supplied, will
+`com.janrain.android.Jump.performTraditionalSignIn` to sign users in. The
+`com.janrain.android.Jump.showSignInDialog` method also takes a provider name parameter which, if supplied, will
 direct the library to begin the sign-in flow directly with that provider, skipping the stock list of
 sign-in providers user interface.
 
